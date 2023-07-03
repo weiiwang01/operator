@@ -14,6 +14,7 @@
 
 import collections
 import datetime
+import grp
 import importlib
 import inspect
 import io
@@ -21,6 +22,7 @@ import ipaddress
 import os
 import pathlib
 import platform
+import pwd
 import shutil
 import sys
 import tempfile
@@ -4221,27 +4223,47 @@ class TestPebbleStorageAPIsUsingMocks(
         harness.remove_storage(store1_id)
         self.assertFalse(c1.exists(c1_fpath))
 
-    @unittest.skipUnless(os.getuid() == 0, "file ownership related tests require root privilege")
+    def _select_testing_user_group(self):
+        user = [u for u in pwd.getpwall() if u.pw_uid != os.getuid()][0]
+        group = [g for g in grp.getgrall() if g.gr_gid != os.getgid()][0]
+        return user, group
+
+    @unittest.skipUnless(os.getuid() == 0 and platform.system() == 'Linux',
+                         "require root privilege on linux operating system")
     def test_push_with_ownership(self):
         # Note: To simplify implementation, ownership is simply stored as-is with no verification.
         data = 'data'
         client = self.client
-        client.push(f"{self.prefix}/file", data, user_id=1, user='foo', group_id=3, group='bar')
+        user, group = self._select_testing_user_group()
+        client.push(
+            f"{self.prefix}/file",
+            data,
+            user_id=user.pw_uid,
+            user=user.pw_name,
+            group_id=group.gr_gid,
+            group=group.gr_name)
         file_ = client.list_files(f"{self.prefix}/file")[0]
-        self.assertEqual(file_.user_id, 1)
-        self.assertEqual(file_.user, 'foo')
-        self.assertEqual(file_.group_id, 3)
-        self.assertEqual(file_.group, 'bar')
+        self.assertEqual(file_.user_id, user.pw_uid)
+        self.assertEqual(file_.user, user.pw_name)
+        self.assertEqual(file_.group_id, group.gr_gid)
+        self.assertEqual(file_.group, group.gr_name)
 
-    @unittest.skipUnless(os.getuid() == 0, "file ownership related tests require root privilege")
+    @unittest.skipUnless(os.getuid() == 0 and platform.system() == 'Linux',
+                         "require root privilege on linux operating system")
     def test_make_dir_with_ownership(self):
         client = self.client
-        client.make_dir(f"{self.prefix}/dir1", user_id=1, user="foo", group_id=3, group="bar")
+        user, group = self._select_testing_user_group()
+        client.make_dir(
+            f"{self.prefix}/dir1",
+            user_id=user.pw_uid,
+            user=user.pw_name,
+            group_id=group.gr_gid,
+            group=group.gr_name)
         dir_ = client.list_files(f"{self.prefix}/dir1", itself=True)[0]
-        self.assertEqual(dir_.user_id, 1)
-        self.assertEqual(dir_.user, "foo")
-        self.assertEqual(dir_.group_id, 3)
-        self.assertEqual(dir_.group, "bar")
+        self.assertEqual(dir_.user_id, user.pw_uid)
+        self.assertEqual(dir_.user, user.pw_name)
+        self.assertEqual(dir_.group_id, group.gr_gid)
+        self.assertEqual(dir_.group, group.gr_name)
 
 
 @unittest.skipUnless(os.getenv('RUN_REAL_PEBBLE_TESTS'), 'RUN_REAL_PEBBLE_TESTS not set')

@@ -1435,14 +1435,16 @@ class Harness(Generic[CharmType]):
         simulated container's root directory. You should populate the container's root directory
         with any files or directories necessary for the charm.
 
-        Example:
-        >>> # charm.py
+        Example usage:
+
+        # charm.py
         >>> import ops
         >>> class ExampleCharm(ops.CharmBase):
         >>>     def __init__(self, *args):
         >>>         super().__init__(*args)
         >>>         self.hostname = open("/etc/hostname").read()
-        >>> # test_charm.py
+
+        # test_charm.py
         >>> from ops.testing import Harness
         >>> harness = Harness(ExampleCharm)
         >>> root = harness.get_filesystem_root("foo")
@@ -1451,9 +1453,11 @@ class Harness(Generic[CharmType]):
 
         Args:
             container: The simple name of the container or the container object.
+
         Return:
             The temporary directory associated with the container is used by the testing harness to
             simulate the container's filesystem.
+
         """
         if isinstance(container, str):
             container_name = container

@@ -41,6 +41,8 @@ jobs:
         include:
           - os: ubuntu-latest
             root: true
+          - os: ubuntu-latest
+            root: false
 
     steps:
       - uses: actions/checkout@v3
@@ -49,7 +51,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install tox
+      - name: Install tox globally
         run: sudo pip install tox
 
       - name: Run unit tests
