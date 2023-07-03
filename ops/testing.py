@@ -1422,7 +1422,7 @@ class Harness(Generic[CharmType]):
             label = secret.label
         self.charm.on.secret_expired.emit(secret_id, label, revision)
 
-    def get_container_root(self, container: Union[str, Container]) -> pathlib.Path:
+    def get_filesystem_root(self, container: Union[str, Container]) -> pathlib.Path:
         """Return the temporary directory harness used to simulate the container filesystem.
 
         Args:
@@ -1449,7 +1449,7 @@ class Harness(Generic[CharmType]):
             >>> # test_charm.py
             >>> from ops.testing import Harness
             >>> harness = Harness(ExampleCharm)
-            >>> root = harness.get_container_root("foo")
+            >>> root = harness.get_filesystem_root("foo")
             >>> (root / "etc" / "hostname").write_text("example")
             >>> harness.begin()
         """

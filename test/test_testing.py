@@ -2674,19 +2674,19 @@ class TestHarness(unittest.TestCase):
             ]
         )
 
-    def test_get_container_root(self):
+    def test_get_filesystem_root(self):
         harness = ops.testing.Harness(ops.CharmBase, meta='''
             name: test-app
             containers:
               foo:
                 resource: foo-image
         ''')
-        foo_root = harness.get_container_root("foo")
+        foo_root = harness.get_filesystem_root("foo")
         self.assertTrue(foo_root.exists())
         self.assertTrue(foo_root.is_dir())
         harness.begin()
         container = harness.charm.unit.get_container("foo")
-        self.assertEqual(foo_root, harness.get_container_root(container))
+        self.assertEqual(foo_root, harness.get_filesystem_root(container))
 
 
 class TestNetwork(unittest.TestCase):
