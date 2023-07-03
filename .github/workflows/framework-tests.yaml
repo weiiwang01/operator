@@ -38,11 +38,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ["3.8", "3.10"]
-        include:
-          - os: ubuntu-latest
-            root: true
-          - os: ubuntu-latest
-            root: false
+        root: [true, false]
 
     steps:
       - uses: actions/checkout@v3

@@ -4228,8 +4228,7 @@ class TestPebbleStorageAPIsUsingMocks(
         group = [g for g in grp.getgrall() if g.gr_gid != os.getgid()][0]
         return user, group
 
-    @unittest.skipUnless(os.getuid() == 0 and platform.system() == 'Linux',
-                         "require root privilege on linux operating system")
+    @unittest.skipUnless(os.getuid() == 0, "require root privilege")
     def test_push_with_ownership(self):
         # Note: To simplify implementation, ownership is simply stored as-is with no verification.
         data = 'data'
@@ -4248,8 +4247,7 @@ class TestPebbleStorageAPIsUsingMocks(
         self.assertEqual(file_.group_id, group.gr_gid)
         self.assertEqual(file_.group, group.gr_name)
 
-    @unittest.skipUnless(os.getuid() == 0 and platform.system() == 'Linux',
-                         "require root privilege on linux operating system")
+    @unittest.skipUnless(os.getuid() == 0, "require root privilege")
     def test_make_dir_with_ownership(self):
         client = self.client
         user, group = self._select_testing_user_group()
