@@ -1849,7 +1849,7 @@ class _TestingModelBackend:
                 if mount.storage != name:
                     continue
                 root = client._root  # pyright: ignore[reportPrivateUsage]
-                (root / mount.location).unlink()
+                (root / mount.location[1:]).unlink()
 
         if self._storage_is_attached(name, index):
             self._storage_attached[name].remove(index)
@@ -1867,7 +1867,11 @@ class _TestingModelBackend:
                     continue
                 for index, store in self._storage_list[mount.storage].items():
                     root = client._root  # pyright: ignore[reportPrivateUsage]
-                    (root / mount.location).symlink_to(store["location"])
+                    mounting_dir = root / mount.location[1:]
+                    mounting_dir.parent.mkdir(parents=True, exist_ok=True)
+                    target_dir = pathlib.Path(store["location"])
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    mounting_dir.symlink_to(target_dir)
 
         index = int(index)
         if not self._storage_is_attached(name, index):

@@ -4138,7 +4138,6 @@ class TestPebbleStorageAPIsUsingMocks(
         if self.prefix:
             self.client.make_dir(self.prefix, make_parents=True)
 
-    @unittest.skipUnless(is_linux, 'Pebble runs on Linux')
     def test_container_storage_mounts(self):
         harness = ops.testing.Harness(ops.CharmBase, meta='''
             name: test-app
