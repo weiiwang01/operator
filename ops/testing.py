@@ -18,6 +18,7 @@
 import dataclasses
 import datetime
 import fnmatch
+import grp
 import inspect
 import ipaddress
 import os
@@ -41,7 +42,6 @@ from typing import (
     Dict,
     Generic,
     Iterable,
-    Iterator,
     List,
     Literal,
     Mapping,
@@ -58,7 +58,7 @@ from typing import (
 from ops import charm, framework, model, pebble, storage
 from ops._private import yaml
 from ops.charm import CharmBase, CharmMeta, RelationRole
-from ops.model import RelationNotFoundError, Container
+from ops.model import Container, RelationNotFoundError
 
 if TYPE_CHECKING:
     from typing_extensions import TypedDict
@@ -67,7 +67,6 @@ if TYPE_CHECKING:
 
     ReadableBuffer = Union[bytes, str, StringIO, BytesIO, BinaryIO]
     _StringOrPath = Union[str, pathlib.PurePosixPath, pathlib.Path]
-    _FileOrDir = Union['_File', '_Directory']
     _FileKwargs = TypedDict('_FileKwargs', {
         'permissions': Optional[int],
         'last_modified': datetime.datetime,
@@ -2440,22 +2439,36 @@ class _TestingPebbleClient:
         try:
             user_id_by_user = user_id if user is None else pwd.getpwnam(user).pw_uid
         except AttributeError:
-            raise pebble.PathError('generic-file-error', f'cannot look up user and group: user: unknown user {user}')
+            raise pebble.PathError('generic-file-error',
+                                   f'cannot look up user and group: user: unknown user {user}')
         try:
-            group_id_by_group = group_id if group is None else pwd.getpwnam(group).pw_gid
+            group_id_by_group = group_id if group is None else grp.getgrnam(group).gr_gid
         except AttributeError:
-            raise pebble.PathError('generic-file-error', f'cannot look up user and group: group: unknown group {group}')
+            raise pebble.PathError('generic-file-error',
+                                   f'cannot look up user and group: group: unknown group {group}')
         if user_id != user_id_by_user:
-            raise pebble.PathError('generic-file-error', f'cannot look up user and group: user "{user}" UID ({user_id_by_user}) does not match user-id ({user_id})')
+            raise pebble.PathError(
+                'generic-file-error',
+                f'cannot look up user and group: '
+                f'user "{user}" UID ({user_id_by_user}) does not match user-id ({user_id})')
         if group_id != group_id_by_group:
-            raise pebble.PathError('generic-file-error', f'cannot look up user and group: group "{group}" GID ({group_id_by_group}) does not match group-id ({group_id})')
+            raise pebble.PathError(
+                'generic-file-error',
+                f'cannot look up user and group: '
+                f'group "{group}" GID ({group_id_by_group}) does not match group-id ({group_id})')
         user_id = user_id if user_id is not None else user_id_by_user
         group_id = group_id if group_id is not None else group_id_by_group
         if user_id and group_id is None:
-            raise pebble.PathError('generic-file-error', 'cannot look up user and group: must specify group, not just UID')
+            raise pebble.PathError(
+                'generic-file-error',
+                'cannot look up user and group: must specify group, not just UID')
         if user_id is None and group_id:
-            raise pebble.PathError('generic-file-error', 'cannot look up user and group: must specify user, not just group')
-        os.chown(path, uid=user_id if user_id is not None else os.getuid(), gid=group_id if group_id is not None else os.getgid())
+            raise pebble.PathError(
+                'generic-file-error',
+                'cannot look up user and group: must specify user, not just group')
+        final_uid = user_id if user_id is not None else os.getuid()
+        final_gid = group_id if group_id is not None else os.getgid()
+        os.chown(path, uid=final_uid, gid=final_gid)
 
     def push(
             self, path: str, source: 'ReadableBuffer', *,
@@ -2472,8 +2485,15 @@ class _TestingPebbleClient:
                 f'permissions not within 0o000 to 0o777: {permissions:#o}')
         self.__check_absolute_path(path)
         file_path = self._root / path.removeprefix("/")
-        if make_dirs:
-            self.make_dir(os.path.split(path)[0], make_parents=True, permissions=permissions, user_id=user_id, user=user, group_id=group_id, group=group)
+        if make_dirs and not file_path.parent.exists():
+            self.make_dir(
+                os.path.split(path)[0],
+                make_parents=True,
+                permissions=None,
+                user_id=user_id,
+                user=user,
+                group_id=group_id,
+                group=group)
         permissions = permissions if permissions is not None else 0o644
         try:
             content = source
@@ -2487,8 +2507,9 @@ class _TestingPebbleClient:
         except FileNotFoundError as e:
             raise pebble.PathError(
                 'not-found', f'parent directory not found: {e.args[0]}')
-        except NotADirectoryError as e:
-            raise pebble.PathError('generic-file-error', f'open {path}.{secrets.token_urlsafe(8)}~: not a directory')
+        except NotADirectoryError:
+            raise pebble.PathError('generic-file-error',
+                                   f'open {path}.{secrets.token_urlsafe(8)}~: not a directory')
 
     def list_files(self, path: str, *, pattern: Optional[str] = None,
                    itself: bool = False) -> List[pebble.FileInfo]:
@@ -2542,7 +2563,14 @@ class _TestingPebbleClient:
             raise pebble.PathError(
                 'not-found', f'parent directory not found: {path}')
         if not dir_path.parent.exists() and make_parents:
-            self.make_dir(os.path.split(path)[0], make_parents=True, permissions=permissions, user_id=user_id, user=user, group_id=group_id, group=group)
+            self.make_dir(
+                os.path.split(path)[0],
+                make_parents=True,
+                permissions=permissions,
+                user_id=user_id,
+                user=user,
+                group_id=group_id,
+                group=group)
         try:
             permissions = permissions if permissions else 0o755
             dir_path.mkdir()

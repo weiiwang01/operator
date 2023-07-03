@@ -27,7 +27,6 @@ import tempfile
 import textwrap
 import unittest
 import uuid
-from io import BytesIO, StringIO
 from unittest.mock import MagicMock
 
 import pytest
