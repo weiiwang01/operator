@@ -38,6 +38,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         python-version: ["3.8", "3.10"]
+        include:
+          - os: ubuntu-latest
+            root: true
 
     steps:
       - uses: actions/checkout@v3
@@ -50,7 +53,12 @@ jobs:
         run: pip install tox
 
       - name: Run unit tests
+        if: ${{ !matrix.root }}
         run: tox -e unit
+
+      - name: Run unit tests as root
+        if: ${{ matrix.root }}
+        run: sudo tox -e unit
 
   test-real-pebble:
     runs-on: ${{ matrix.os }}
